@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
@@ -18,6 +19,7 @@ class AuthController extends Controller
             'phone' => 'nullable|string|max:20',
             'address' => 'nullable|string|max:255',
             'password' => 'required|string|min:6|confirmed',
+            // 'role' is not accepted from public registration
         ]);
 
         $user = User::create([
@@ -26,6 +28,7 @@ class AuthController extends Controller
             'phone' => $request->phone,
             'address' => $request->address,
             'password' => Hash::make($request->password),
+            'role' => 'user' // Default role
         ]);
 
         $token = $user->createToken('auth_token')->plainTextToken;
@@ -40,32 +43,45 @@ class AuthController extends Controller
     // LOGIN
     public function login(Request $request)
     {
-        $request->validate([
-            'email' => 'required|string|email',
-            'password' => 'required|string'
-        ]);
-
-        $user = User::where('email', $request->email)->first();
-
-        if (!$user || !Hash::check($request->password, $user->password)) {
-            throw ValidationException::withMessages([
-                'email' => ['The provided credentials are incorrect.']
+        try {
+            $request->validate([
+                'email' => 'required|string|email',
+                'password' => 'required|string'
             ]);
+
+            $user = User::where('email', $request->email)->first();
+
+            if (!$user || !Hash::check($request->password, $user->password)) {
+                throw ValidationException::withMessages([
+                    'email' => ['The provided credentials are incorrect.']
+                ]);
+            }
+
+            $token = $user->createToken('auth_token')->plainTextToken;
+
+            return response()->json([
+                'message' => 'Login successful',
+                'user' => $user,
+                'token' => $token
+            ]);
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (\Exception $e) {
+            Log::error('Login error: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'An error occurred during login. Please try again.',
+                'error' => config('app.debug') ? $e->getMessage() : null
+            ], 500);
         }
-
-        $token = $user->createToken('auth_token')->plainTextToken;
-
-        return response()->json([
-            'message' => 'Login successful',
-            'user' => $user,
-            'token' => $token
-        ]);
     }
 
     // LOGOUT
     public function logout(Request $request)
     {
-        $request->user()->tokens()->delete();
+        // Delete all tokens for the authenticated user
+        if ($request->user()) {
+            $request->user()->tokens()->delete();
+        }
 
         return response()->json([
             'message' => 'Logged out successfully'

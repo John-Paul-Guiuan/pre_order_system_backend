@@ -9,10 +9,12 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\CategoryController;
 
 // Pickup/Deliveries
 Route::get('/orders/scheduled', [OrderController::class, 'scheduled']);
 Route::middleware([ForceJsonResponse::class])->group(function () {
+Route::get('/categories', [CategoryController::class, 'index']);
 Route::get('/products', [ProductController::class, 'index']);
 Route::get('/products/{id}', [ProductController::class, 'show']);
 Route::post('/products', [ProductController::class, 'store']);
@@ -23,6 +25,13 @@ Route::patch('/orders/{id}/status', [OrderController::class, 'updateStatus']);
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
+
+Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function () {
+    Route::get('/dashboard', [\App\Http\Controllers\AdminController::class, 'dashboard']);
+    // more admin endpoints...
+});
+
+
 
 Route::middleware('auth:sanctum')->group(function () {
         // Get authenticated user info
