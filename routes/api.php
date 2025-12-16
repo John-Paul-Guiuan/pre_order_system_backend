@@ -13,51 +13,49 @@ use App\Http\Controllers\CategoryController;
 
 // Pickup/Deliveries
 Route::get('/orders/scheduled', [OrderController::class, 'scheduled']);
+
 Route::middleware([ForceJsonResponse::class])->group(function () {
-Route::get('/categories', [CategoryController::class, 'index']);
-Route::get('/products', [ProductController::class, 'index']);
-Route::get('/products/{id}', [ProductController::class, 'show']);
-Route::post('/products', [ProductController::class, 'store']);
-Route::post('/orders', [OrderController::class, 'store']);   // place new order
-Route::get('/orders/{id}', [OrderController::class, 'show']); // view order details
-Route::get('/orders/{id}/status', [OrderController::class, 'status']); // track status
-Route::patch('/orders/{id}/status', [OrderController::class, 'updateStatus']);
+    Route::get('/categories', [CategoryController::class, 'index']);
+    Route::get('/products', [ProductController::class, 'index']);
+    Route::get('/products/{id}', [ProductController::class, 'show']);
+    Route::post('/products', [ProductController::class, 'store'])
+        ->withoutMiddleware([\App\Http\Middleware\ForceJsonResponse::class]);
+    Route::post('/products/{id}', [ProductController::class, 'update']);
+    Route::put('/products/{id}', [ProductController::class, 'update']);
+    Route::delete('/products/{id}', [ProductController::class, 'destroy']);
+    Route::post('/orders', [OrderController::class, 'store']);
+    Route::get('/orders/{id}', [OrderController::class, 'show']);
+    Route::get('/orders/{id}/status', [OrderController::class, 'status']);
+    Route::patch('/orders/{id}/status', [OrderController::class, 'updateStatus']);
 
-Route::post('/register', [AuthController::class, 'register']);
-Route::post('/login', [AuthController::class, 'login']);
+    Route::post('/register', [AuthController::class, 'register']);
+    Route::post('/login', [AuthController::class, 'login']);
 
-Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function () {
-    Route::get('/dashboard', [\App\Http\Controllers\AdminController::class, 'dashboard']);
-    // more admin endpoints...
-});
-
-
-
-Route::middleware('auth:sanctum')->group(function () {
-        // Get authenticated user info
-    Route::get('/user', function (Request $request) {
-        return $request->user();
+    Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function () {
+        Route::get('/dashboard', [\App\Http\Controllers\AdminController::class, 'dashboard']);
     });
 
-    Route::post('/logout', [AuthController::class, 'logout']);
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::get('/user', function (Request $request) {
+            return $request->user();
+        });
 
-    // Profile management
-     Route::put('/profile/update', [ProfileController::class, 'updateProfile'])
-        ->withoutMiddleware([\App\Http\Middleware\ForceJsonResponse::class]); // Important for file uploads!
+        Route::post('/logout', [AuthController::class, 'logout']);
+    });
+});
+
+// Profile routes - OUTSIDE the ForceJsonResponse middleware
+Route::middleware('auth:sanctum')->group(function () {
+    Route::put('/profile/update', [ProfileController::class, 'update']);
     Route::put('/profile/change-password', [ProfileController::class, 'changePassword']);
 });
 
 Route::get('/ping', fn() => response()->json(['message' => 'API is working!']));
-//Online payment processing
+
 Route::post('/payments/{order_id}', [PaymentController::class, 'processPayment']);
 
-// 🔔 Notifications
 Route::get('/notifications/{user_id}', [NotificationController::class, 'index']);
 Route::patch('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
 
-// 📦 Order Tracking
 Route::get('/orders/user/{user_id}', [OrderController::class, 'userOrders']);
-
-
-
-});
+?>
