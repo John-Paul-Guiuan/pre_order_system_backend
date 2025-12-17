@@ -1,9 +1,8 @@
-# Use PHP 8.2 FPM image
-FROM php:8.2-fpm
+# Use official PHP 8.2 image
+FROM php:8.2-cli
 
-# Install system dependencies including nginx
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
-    nginx \
     libpng-dev \
     libonig-dev \
     libxml2-dev \
@@ -12,8 +11,7 @@ RUN apt-get update && apt-get install -y \
     git \
     curl \
     libpq-dev \
-    && docker-php-ext-install pdo_pgsql mbstring bcmath gd \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
+    && docker-php-ext-install pdo pdo_pgsql mbstring bcmath gd
 
 # Set working directory
 WORKDIR /var/www/html
@@ -29,14 +27,8 @@ RUN composer install --no-interaction --optimize-autoloader
 RUN mkdir -p storage/framework/{cache,data,sessions,views} bootstrap/cache \
     && chmod -R 777 storage bootstrap/cache
 
-# Cache config, routes, and views for production
-RUN php artisan config:cache && php artisan route:cache && php artisan view:cache
-
-# Copy custom Nginx config
-COPY ./nginx.conf /etc/nginx/sites-available/default
-
-# Expose HTTP port for Render
+# Expose Render port
 EXPOSE 8080
 
-# Start Nginx + PHP-FPM
-CMD ["sh", "-c", "php-fpm & nginx -g 'daemon off;'"]
+# Start Laravel AFTER Render injects env vars
+CMD php artisan serve --host=0.0.0.0 --port=8080
