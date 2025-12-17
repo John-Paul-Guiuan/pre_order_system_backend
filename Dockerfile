@@ -1,4 +1,4 @@
-# Use official PHP 8.2 image
+# Use official PHP 8.2 CLI image
 FROM php:8.2-cli
 
 # Install system dependencies
@@ -27,13 +27,8 @@ RUN composer install --no-interaction --optimize-autoloader
 RUN mkdir -p storage/framework/{cache,data,sessions,views} bootstrap/cache \
     && chmod -R 777 storage bootstrap/cache
 
-# Cache config for production
-RUN php artisan config:clear \
- && php artisan config:cache \
- && php artisan route:cache
-
 # Expose Render port
 EXPOSE 8080
 
-# Start Laravel
-CMD php artisan serve --host=0.0.0.0 --port=8080
+# Start Laravel using Render's PORT
+CMD php artisan serve --host=0.0.0.0 --port=$PORT
