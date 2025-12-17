@@ -1,4 +1,4 @@
-# Use PHP 8.2 CLI
+# Use official PHP 8.2 CLI image
 FROM php:8.2-cli
 
 # Install system dependencies
@@ -18,41 +18,34 @@ RUN apt-get update && apt-get install -y \
 # Set working directory
 WORKDIR /var/www/html
 
-# Copy the entire project (artisan must exist now)
+# 1. Copy composer files first (for caching)
+COPY composer.json composer.lock ./
+
+# 2. Copy all project files (artisan now exists)
 COPY . .
 
-# Install Composer
-COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
-
-# Install PHP dependencies (artisan exists, post-autoload scripts succeed)
+# 3. Install PHP dependencies (artisan now exists)
 RUN composer install --no-interaction --optimize-autoloader --no-dev
 
-# Create required Laravel directories with proper permissions
+# 4. Create required Laravel directories with proper permissions
 RUN mkdir -p storage/framework/{cache,data,sessions,views} \
     storage/app/public \
     storage/logs \
     bootstrap/cache \
     && chmod -R 775 storage bootstrap/cache
 
-# Cache config, routes, and views for production
+# 5. Cache config, routes, and views for production
 RUN php artisan config:clear \
     && php artisan config:cache \
     && php artisan route:cache \
     && php artisan view:cache
 
-# Run database migrations (force)
-# It will fail gracefully if DB not ready
+# 6. Run database migrations automatically (force)
+# If database is not ready yet, it will just log the error
 RUN php artisan migrate --force || echo "Database migration failed. Check DB connection."
 
-# Expose Render port
+# Expose Render port (Render uses PORT env var)
 EXPOSE 8080
 
-# Copy entrypoint script and make executable
-COPY docker-entrypoint.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
-
-# Use entrypoint to handle initialization and server start
-ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
-
-# Default command (can be overridden)
-CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=${PORT:-8080}"]
+# Start Laravel using Render's PORT environment variable
+CMD php artisan serve --host=0.0.0.0 --port=${PORT:-8080}
