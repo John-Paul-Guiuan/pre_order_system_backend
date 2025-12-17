@@ -11,23 +11,21 @@ RUN apt-get update && apt-get install -y \
     git \
     curl \
     libpq-dev \
-    && docker-php-ext-install pdo pdo_pgsql mbstring bcmath gd \
+    && docker-php-ext-install pdo_pgsql mbstring bcmath gd \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
 WORKDIR /var/www/html
 
-# Copy composer files first for better caching
+# Copy composer files first (better caching)
 COPY composer.json composer.lock ./
 
 # Install Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
-
-# Install PHP dependencies
 RUN composer install --no-interaction --optimize-autoloader --no-dev
 
-# Copy all project files
+# Copy the rest of the project
 COPY . .
 
 # Create required Laravel directories with proper permissions
@@ -37,12 +35,17 @@ RUN mkdir -p storage/framework/{cache,data,sessions,views} \
     bootstrap/cache \
     && chmod -R 775 storage bootstrap/cache
 
-# Copy entrypoint script
-COPY docker-entrypoint.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+# Cache config, routes, and views for production
+RUN php artisan config:clear \
+    && php artisan config:cache \
+    && php artisan route:cache \
+    && php artisan view:cache
+
+# Run migrations automatically (force)
+RUN php artisan migrate --force || echo "Migration failed, check database connection"
 
 # Expose Render port
 EXPOSE 8080
 
-# Use entrypoint script
-ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+# Start Laravel server using Render PORT
+CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8080"]
