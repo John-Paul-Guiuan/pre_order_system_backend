@@ -1,4 +1,4 @@
-# Use PHP 8.2 CLI image (lightweight for Laravel)
+# Use PHP 8.2 CLI image
 FROM php:8.2-cli
 
 # Install system dependencies
@@ -18,15 +18,14 @@ RUN apt-get update && apt-get install -y \
 # Set working directory
 WORKDIR /var/www/html
 
-# Copy composer files first for caching
-COPY composer.json composer.lock ./
+# Copy all project files including artisan
+COPY . .
 
 # Install Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
-RUN composer install --no-interaction --optimize-autoloader --no-dev
 
-# Copy all project files
-COPY . .
+# Install PHP dependencies (artisan exists now)
+RUN composer install --no-interaction --optimize-autoloader --no-dev
 
 # Create required Laravel directories with proper permissions
 RUN mkdir -p storage/framework/{cache,data,sessions,views} \
@@ -35,12 +34,12 @@ RUN mkdir -p storage/framework/{cache,data,sessions,views} \
     bootstrap/cache \
     && chmod -R 775 storage bootstrap/cache
 
+# Expose Render port (Render will override with $PORT)
+EXPOSE 8080
+
 # Copy entrypoint script
 COPY docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
-
-# Expose Render port (Render will override with $PORT)
-EXPOSE 8080
 
 # Use entrypoint to handle migrations, caching, and start server
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
