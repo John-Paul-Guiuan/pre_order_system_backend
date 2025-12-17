@@ -11,10 +11,8 @@ RUN apt-get update && apt-get install -y \
     git \
     curl \
     libpq-dev \
-    && docker-php-ext-install pdo pdo_pgsql mbstring bcmath gd
-  
-php artisan migrate
-  
+    && docker-php-ext-install pdo_pgsql mbstring bcmath gd
+
 # Set working directory
 WORKDIR /var/www/html
 
@@ -29,8 +27,13 @@ RUN composer install --no-interaction --optimize-autoloader
 RUN mkdir -p storage/framework/{cache,data,sessions,views} bootstrap/cache \
     && chmod -R 777 storage bootstrap/cache
 
+# Cache config for production
+RUN php artisan config:clear \
+ && php artisan config:cache \
+ && php artisan route:cache
+
 # Expose Render port
 EXPOSE 8080
 
-# Start Laravel AFTER Render injects env vars
+# Start Laravel
 CMD php artisan serve --host=0.0.0.0 --port=8080
