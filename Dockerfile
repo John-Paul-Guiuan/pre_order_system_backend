@@ -11,23 +11,23 @@ RUN apt-get update && apt-get install -y \
     git \
     curl \
     libpq-dev \
-    && docker-php-ext-install pdo pdo_pgsql mbstring bcmath gd \
+    && docker-php-ext-install pdo_pgsql mbstring bcmath gd \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
 WORKDIR /var/www/html
 
-# ✅ Install Composer FIRST (before using it)
+# Install Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-# ✅ Copy entire Laravel project (artisan included)
+# Copy ALL project files first (artisan MUST exist)
 COPY . .
 
-# ✅ Install dependencies AFTER artisan exists
-RUN composer install --no-interaction --optimize-autoloader --no-dev
+# Install PHP dependencies
+RUN composer install --no-interaction --no-dev --optimize-autoloader
 
-# ✅ Create required Laravel directories & permissions
+# Create Laravel writable directories
 RUN mkdir -p storage/framework/{cache,data,sessions,views} \
     storage/logs \
     bootstrap/cache \
@@ -36,5 +36,10 @@ RUN mkdir -p storage/framework/{cache,data,sessions,views} \
 # Expose Render port
 EXPOSE 8080
 
-# ✅ Start Laravel using Render's PORT
+# IMPORTANT:
+# - No config:cache
+# - No route:cache
+# - No migrate at build time
+# - Let Render inject env vars at runtime
+
 CMD php artisan serve --host=0.0.0.0 --port=${PORT:-8080}
