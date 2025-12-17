@@ -1,4 +1,4 @@
-# Use official PHP 8.2 image
+# Use official PHP 8.2 CLI image
 FROM php:8.2-cli
 
 # Install system dependencies
@@ -11,24 +11,30 @@ RUN apt-get update && apt-get install -y \
     git \
     curl \
     libpq-dev \
-    && docker-php-ext-install pdo pdo_pgsql mbstring bcmath gd
+    && docker-php-ext-install pdo pdo_pgsql mbstring bcmath gd \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
 WORKDIR /var/www/html
 
-# Copy project files
+# ✅ Install Composer FIRST (before using it)
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+# ✅ Copy entire Laravel project (artisan included)
 COPY . .
 
-# Install Composer
-COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
-RUN composer install --no-interaction --optimize-autoloader
+# ✅ Install dependencies AFTER artisan exists
+RUN composer install --no-interaction --optimize-autoloader --no-dev
 
-# Create required Laravel directories
-RUN mkdir -p storage/framework/{cache,data,sessions,views} bootstrap/cache \
-    && chmod -R 777 storage bootstrap/cache
+# ✅ Create required Laravel directories & permissions
+RUN mkdir -p storage/framework/{cache,data,sessions,views} \
+    storage/logs \
+    bootstrap/cache \
+    && chmod -R 775 storage bootstrap/cache
 
 # Expose Render port
 EXPOSE 8080
 
-# Start Laravel AFTER Render injects env vars
-CMD php artisan serve --host=0.0.0.0 --port=8080
+# ✅ Start Laravel using Render's PORT
+CMD php artisan serve --host=0.0.0.0 --port=${PORT:-8080}
