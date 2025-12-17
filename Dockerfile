@@ -18,7 +18,7 @@ RUN apt-get update && apt-get install -y \
 # Set working directory
 WORKDIR /var/www/html
 
-# Copy composer files first (better caching)
+# Copy composer files first for caching
 COPY composer.json composer.lock ./
 
 # Install Composer
@@ -41,11 +41,12 @@ RUN php artisan config:clear \
     && php artisan route:cache \
     && php artisan view:cache
 
-# Run migrations automatically (force)
-RUN php artisan migrate --force || echo "Migration failed, check database connection"
+# Run database migrations automatically (force)
+# If database not ready, it will try again on container restart
+RUN php artisan migrate --force || echo "Database migration failed. Check DB connection."
 
-# Expose Render port
+# Expose Render port (Render uses PORT env var)
 EXPOSE 8080
 
-# Start Laravel server using Render PORT
-CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8080"]
+# Start Laravel using Render's PORT environment variable
+CMD php artisan serve --host=0.0.0.0 --port=${PORT:-8080}
