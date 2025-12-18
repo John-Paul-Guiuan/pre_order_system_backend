@@ -12,7 +12,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('products', function (Blueprint $table) {
-            $table->string('image_url')->nullable()->after('is_available');
+            // Prevent duplicate column error on redeploy
+            if (!Schema::hasColumn('products', 'image_url')) {
+                $table->string('image_url')->nullable();
+            }
         });
     }
 
@@ -22,7 +25,10 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('products', function (Blueprint $table) {
-             $table->dropColumn('image_url');
+            // Safe rollback
+            if (Schema::hasColumn('products', 'image_url')) {
+                $table->dropColumn('image_url');
+            }
         });
     }
 };
